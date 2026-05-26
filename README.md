@@ -1,42 +1,44 @@
-# ShopVerse - Full Stack App
+# ShopVerse - Next.js Auth App
 
-Next.js (Frontend + Internal API Connector) + PHP (Backend API) + PostgreSQL
+Next.js frontend with internal API adapter/proxy to DummyJSON Auth.
 
----
+## Requirements Covered
 
-Project Structure
+- Login page with `username` and `password`
+- Basic validation and login error state
+- Login success redirects to `/profile`
+- Profile page loads authenticated user data
+- Profile reload still works through an httpOnly cookie
+- Logout clears the auth cookie
+- Client components call only same-origin `/api/...` routes
+- Next.js Route Handlers proxy to the upstream DummyJSON API
+- Route protection for `/profile`
+- Loading and error states
+- Responsive UI
 
-```
-project/
-├── frontend/           Next.js 
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── auth/
-│   │   │   │   ├── login/route.ts     # POST /api/auth/login
-│   │   │   │   ├── me/route.ts        # GET  /api/auth/me
-│   │   │   │   ├── profile/route.ts   # POST /api/auth/profile
-│   │   │   │   └── logout/route.ts    # POST /api/auth/logout
-│   │   ├── login/page.tsx
-│   │   ├── profile/page.tsx
-│   └── ...
-└── backend/           # PHP API
-    ├── .env           # Local backend config
-    ├── database/
-    │   ├── schema.sql
-    │   └── seed.php
-    ├── .htaccess      # URL routing
-    ├── helpers.php    # Shared utilities
-    ├── router.php     # PHP built-in server router
-    ├── uploads/       # Runtime uploaded files
-    └── api/
-        ├── auth/
-        │   ├── login.php
-        │   ├── me.php
-        │   ├── profile.php
-        │   └── logout.php
+## Upstream API
+
+The upstream API URL is stored in the root `.env` file:
+
+```env
+API_BASE_URL=https://dummyjson.com
 ```
 
----
+Only server-side route handlers read `API_BASE_URL`. Client components never import it and never call the upstream API directly.
+
+| Internal Route | Upstream API |
+| --- | --- |
+| `POST /api/auth/login` | `POST ${API_BASE_URL}/auth/login` |
+| `GET /api/auth/me` | `GET ${API_BASE_URL}/auth/me` |
+| `POST /api/auth/logout` | Local cookie clear |
+| `POST /api/auth/profile` | `PATCH ${API_BASE_URL}/users/:id` mock update |
+
+Auth token handling:
+
+- DummyJSON returns `accessToken` from `/auth/login`
+- The Next.js API route stores it in an `httpOnly` cookie named `auth_token`
+- `/api/auth/me` reads that cookie server-side and sends it to DummyJSON as a Bearer token
+- Client-side code never reads or stores the token directly
 
 ## Setup Project
 
@@ -46,154 +48,64 @@ project/
 cp .env.example .env
 ```
 
-Set the root `.env` values:
+Make sure the root `.env` contains:
 
 ```env
-API_BASE_URL=http://localhost:8080
-FRONTEND_URL=http://localhost:3000
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_NAME=
-DB_USER=
-DB_PASS=
-AUTH_SECRET=change-this-local-secret
-AUTH_TOKEN_TTL=3600
+API_BASE_URL=https://dummyjson.com
 ```
 
-The frontend reads `API_BASE_URL` from the root `.env` through `frontend/next.config.ts`.
-`API_BASE_URL` is read only by Next.js server code in route handlers. Do not prefix it with `NEXT_PUBLIC_`.
+Do not prefix it with `NEXT_PUBLIC_`. It must stay server-only.
 
-### 2. Install Frontend Dependencies
+### 2. Install Dependencies
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 3. Prepare PostgreSQL Database
-
-Create an empty PostgreSQL database named `shops_project` first.
-
-Example with `psql`:
+### 3. Run Development Server
 
 ```bash
-createdb -h 127.0.0.1 -p 5432 -U DB_USER DB_NAME
+npm run dev
 ```
 
-If the database already exists, skip this step.
-
-### 4. Migrate Database
-
-Run this from the `backend` folder:
-
-```bash
-cd backend
-php database/migrate.php
-```
-
-This reads `backend/database/schema.sql` and creates the required tables.
-
-Alternative using `psql`:
-
-```bash
-cd backend
-psql -h 127.0.0.1 -p 5432 -U DB_USER -d DB_NAME -f database/schema.sql
-```
-
-### 5. Seed Default Data
-
-Run this from the `backend` folder:
-
-```bash
-php database/seed.php
-```
-
-Default login:
+Open:
 
 ```txt
-username: Admin
-password: SystemAdmin
+http://localhost:3000
 ```
 
-### 6. Run Backend API
+## DummyJSON Test Credentials
 
-Requires PHP 8.1+ with `pdo_pgsql` enabled.
-
-```bash
-cd backend
-php -S localhost:8080 router.php
-# API at http://localhost:8080/api/...
+```txt
+username: emilys
+password: emilyspass
 ```
 
-### 7. Run Frontend
+You can also use any valid user credentials from DummyJSON users.
 
-Open a second terminal:
+## Project Structure
 
-```bash
-cd frontend
-npm run dev
-# Frontend at http://localhost:3000
+```txt
+frontend/
+├── app/
+│   ├── api/auth/
+│   │   ├── login/route.ts
+│   │   ├── me/route.ts
+│   │   ├── logout/route.ts
+│   │   └── profile/route.ts
+│   ├── login/page.tsx
+│   └── profile/
+│       ├── page.tsx
+│       ├── loading.tsx
+│       ├── error.tsx
+│       └── ProfileClient.tsx
+└── app/components/AlertModal.tsx
 ```
 
-### Apache/Nginx
+## Notes
 
-- Point document root to `/backend`
-- Enable `mod_rewrite` for `.htaccess` routing
-
----
-
-## Token Management
-
-- **Next.js**: Token stored in `httpOnly` cookie (`auth_token`) set by the API route
-- **PHP**: Token stored in `httpOnly` cookie via `setcookie()` with `httponly: true`
-- Client NEVER receives the raw token
-- Frontend auth calls go through same-origin `/api/...`, then the Next.js server proxies to `API_BASE_URL`
-
----
-
-## API Connector Design
-
-The browser never calls the PHP backend URL directly. Client components call only internal same-origin endpoints:
-
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/auth/profile`
-- `POST /api/auth/logout`
-
-Those endpoints are implemented as Next.js Route Handlers in `frontend/app/api/.../route.ts`. They read `API_BASE_URL` from the root `.env` on the server, forward requests to the PHP backend, and pass through the `httpOnly` auth cookie. Because `API_BASE_URL` is server-only, it is not bundled into client components and does not appear as a direct browser request in DevTools Network.
-
-UI states:
-
-- Loading: login button pending state and `frontend/app/profile/loading.tsx`
-- Error: login form errors and `frontend/app/profile/error.tsx`
-- Empty: profile empty state when no user data is available
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/auth/login` | Login (username/email + password) |
-| GET | `/api/auth/me` | Get current user profile |
-| POST | `/api/auth/profile` | Update profile and profile image |
-| POST | `/api/auth/logout` | Logout (clear cookie) |
-
----
-
-## Default Credentials
-
-```
-username: Admin
-password: SystemAdmin
-```
-
----
-
-## Security Notes
-
-- Tokens stored in `httpOnly` cookies (not accessible via JS)
-- `secure` flag set in production (HTTPS)
-- `SameSite: Lax` to prevent CSRF
-- Input validation on both frontend and backend
-- All external API calls proxied server-side
+- Profile edit is a DummyJSON mock update. DummyJSON does not permanently persist updates.
+- Uploaded profile images are previewed in the UI, but DummyJSON does not store uploaded image files.
+- The app uses `httpOnly`, `sameSite: "lax"` cookies for token storage.
+- In browser DevTools Network, auth/profile requests should appear as `/api/auth/...`, not as upstream API requests.
