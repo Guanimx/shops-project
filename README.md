@@ -53,8 +53,8 @@ API_BASE_URL=http://localhost:8080
 FRONTEND_URL=http://localhost:3000
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_NAME=shops_project
-DB_USER=postgres
+DB_NAME=
+DB_USER=
 DB_PASS=
 AUTH_SECRET=change-this-local-secret
 AUTH_TOKEN_TTL=3600
@@ -77,7 +77,7 @@ Create an empty PostgreSQL database named `shops_project` first.
 Example with `psql`:
 
 ```bash
-createdb -h 127.0.0.1 -p 5432 -U postgres shops_project
+createdb -h 127.0.0.1 -p 5432 -U DB_USER DB_NAME
 ```
 
 If the database already exists, skip this step.
@@ -97,7 +97,7 @@ Alternative using `psql`:
 
 ```bash
 cd backend
-psql -h 127.0.0.1 -p 5432 -U postgres -d shops_project -f database/schema.sql
+psql -h 127.0.0.1 -p 5432 -U DB_USER -d DB_NAME -f database/schema.sql
 ```
 
 ### 5. Seed Default Data
