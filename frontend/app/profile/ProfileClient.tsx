@@ -85,6 +85,63 @@ export default function ProfileClient({ user }: { user: User | null }) {
     };
   }, [sidebarOpen]);
 
+  const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+  const INACTIVITY_REDIRECT_DELAY = 3000; // 3 seconds to show alert before redirect
+  const inactivityTimerRef = useRef<number | null>(null);
+  const redirectDelayRef = useRef<number | null>(null);
+  const inactivityTriggeredRef = useRef(false);
+
+  function clearInactivityTimers() {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    if (redirectDelayRef.current) {
+      clearTimeout(redirectDelayRef.current);
+      redirectDelayRef.current = null;
+    }
+  }
+
+  function handleInactivity() {
+    inactivityTriggeredRef.current = true;
+    setAlert({
+      open: true,
+      title: "เซสชั่นหมดเวลา",
+      message: "ไม่ได้ใช้งานเกิน 15 นาที จึงต้องกลับไปยังหน้าเข้าสู่ระบบอีกครั้ง",
+      variant: "error",
+    });
+
+    // Give user a moment to read the message, then redirect to login
+    redirectDelayRef.current = window.setTimeout(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      setSidebarOpen(false);
+      redirectToLogin();
+      inactivityTriggeredRef.current = false;
+    }, INACTIVITY_REDIRECT_DELAY);
+  }
+
+  function resetInactivityTimer() {
+    if (redirectingToLogin) return;
+    clearInactivityTimers();
+    inactivityTimerRef.current = window.setTimeout(handleInactivity, INACTIVITY_TIMEOUT);
+  }
+
+  useEffect(() => {
+    // Start inactivity timer and listen for user interactions to reset it
+    resetInactivityTimer();
+
+    const events = ["mousemove", "keydown", "click", "touchstart"];
+    const onActivity = () => resetInactivityTimer();
+
+    events.forEach((ev) => window.addEventListener(ev, onActivity));
+
+    return () => {
+      clearInactivityTimers();
+      events.forEach((ev) => window.removeEventListener(ev, onActivity));
+    };
+  }, [redirectingToLogin, redirectToLogin]);
+
   const initialForm = useMemo<ProfileFormState>(() => {
     if (!currentUser) {
       return {
@@ -139,6 +196,18 @@ export default function ProfileClient({ user }: { user: User | null }) {
 
   function closeAlert() {
     setAlert((current) => ({ ...current, open: false }));
+    if (inactivityTriggeredRef.current) {
+      // If this alert was for inactivity, perform immediate redirect when user closes it
+      if (redirectDelayRef.current) {
+        clearTimeout(redirectDelayRef.current);
+        redirectDelayRef.current = null;
+      }
+      localStorage.clear();
+      sessionStorage.clear();
+      setSidebarOpen(false);
+      inactivityTriggeredRef.current = false;
+      redirectToLogin();
+    }
   }
 
   function handleCancel() {
