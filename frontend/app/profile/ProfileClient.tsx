@@ -1,30 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { Menu } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import AlertModal from "../components/AlertModal";
-
-interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  phone: string;
-  image: string;
-  role: string;
-}
-
-interface ProfileFormState {
-  name: string;
-  email: string;
-  role: string;
-  phone: string;
-  username: string;
-  password: string;
-  confirmPassword: string;
-}
+import ProfileHero from "./components/ProfileHero";
+import ProfileSidebar from "./components/ProfileSidebar";
+import { PasswordField, ProfileField } from "./components/ProfileFields";
+import type { ProfileFormState, User } from "./types";
 
 interface AlertState {
   open: boolean;
@@ -40,6 +24,8 @@ export default function ProfileClient({ user }: { user: User | null }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [redirectingToLogin, setRedirectingToLogin] = useState(false);
   const [alert, setAlert] = useState<AlertState>({
     open: false,
     title: "",
@@ -48,6 +34,56 @@ export default function ProfileClient({ user }: { user: User | null }) {
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
+
+  const redirectToLogin = useCallback(() => {
+    setRedirectingToLogin(true);
+    router.replace("/login");
+    router.refresh();
+  }, [router]);
+
+  const verifySession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        redirectToLogin();
+      }
+    } catch {
+      redirectToLogin();
+    }
+  }, [redirectToLogin]);
+
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        void verifySession();
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void verifySession();
+      }
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [verifySession]);
+
+  useEffect(() => {
+    document.body.classList.toggle("sidebar-drawer-open", sidebarOpen);
+
+    return () => {
+      document.body.classList.remove("sidebar-drawer-open");
+    };
+  }, [sidebarOpen]);
 
   const initialForm = useMemo<ProfileFormState>(() => {
     if (!currentUser) {
@@ -77,10 +113,14 @@ export default function ProfileClient({ user }: { user: User | null }) {
 
   async function handleLogout() {
     setLoggingOut(true);
-    await fetch("/api/auth/logout", { method: "POST" });
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push("/login");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      setSidebarOpen(false);
+      redirectToLogin();
+    }
   }
 
   function updateField(field: keyof ProfileFormState, value: string) {
@@ -110,7 +150,7 @@ export default function ProfileClient({ user }: { user: User | null }) {
     }
   }
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
 
     if (!file) {
@@ -137,7 +177,7 @@ export default function ProfileClient({ user }: { user: User | null }) {
     setImagePreview(URL.createObjectURL(file));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (!form.name.trim()) {
@@ -228,7 +268,11 @@ export default function ProfileClient({ user }: { user: User | null }) {
     }
   }
 
-  if (!currentUser) {
+  if (!currentUser || redirectingToLogin) {
+    if (redirectingToLogin) {
+      return null;
+    }
+
     return (
       <main className="profile-page">
         <div className="empty-state">
@@ -252,57 +296,51 @@ export default function ProfileClient({ user }: { user: User | null }) {
   return (
     <main className="profile-page profile-page-full">
       <section className="profile-shell profile-shell-full">
-        <aside className="sidebar">
-          <Link href="/" className="side-logo">Shops</Link>
-          <nav className="side-nav" aria-label="Profile navigation">
-            <button className="side-link active" type="button">
-              <UserIcon />
-              โปรไฟล์ผู้ใช้
-            </button>
-            <button className="side-link" type="button">
-              <GearIcon />
-              ตั้งค่า
-            </button>
-          </nav>
+        <button
+          className="sidebar-overlay"
+          type="button"
+          aria-label="ปิดเมนู"
+          onClick={() => setSidebarOpen(false)}
+          hidden={!sidebarOpen}
+        />
 
-          <div className="side-account">
-            <Avatar initials={initials} image={imagePreview || currentUser.image} />
-            <div>
-              <strong>{displayName}</strong>
-            </div>
-          </div>
-
-          <button className="logout-link" type="button" onClick={handleLogout} disabled={loggingOut}>
-            <LogoutIcon />
-            {loggingOut ? "กำลังออก..." : "ออกจากระบบ"}
-          </button>
-        </aside>
+        <ProfileSidebar
+          open={sidebarOpen}
+          displayName={displayName}
+          initials={initials}
+          image={imagePreview || currentUser.image}
+          loggingOut={loggingOut}
+          onClose={() => setSidebarOpen(false)}
+          onLogout={handleLogout}
+        />
 
         <section className="profile-content">
-          <header className="profile-hero">
-            <div className="profile-avatar-wrap">
-              <Avatar initials={initials} image={imagePreview || currentUser.image} large />
-              <button className="edit-avatar" type="button" aria-label="แก้ไขรูปโปรไฟล์" onClick={() => fileInputRef.current?.click()}>
-                <PencilIcon />
-              </button>
-              <input
-                ref={fileInputRef}
-                className="avatar-input"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleImageChange}
-              />
-            </div>
-            <h1>{displayName}</h1>
-            <span className="role-pill">{form.role || "User"}</span>
-          </header>
+          <button
+            className="mobile-sidebar-toggle"
+            type="button"
+            aria-expanded={sidebarOpen}
+            aria-label="เปิดเมนู"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu aria-hidden="true" />
+            <span>เมนู</span>
+          </button>
+
+          <ProfileHero
+            displayName={displayName}
+            initials={initials}
+            image={imagePreview || currentUser.image}
+            role={form.role}
+            fileInputRef={fileInputRef}
+            onImageChange={handleImageChange}
+          />
 
           <form className="profile-form profile-form-full" onSubmit={handleSubmit} autoComplete="off" noValidate>
             <h2>โปรไฟล์ผู้ใช้</h2>
             <ProfileField label="ชื่อ-นามสกุล" value={form.name} onChange={(value) => updateField("name", value)} autoComplete="off" required />
             <ProfileField label="อีเมล" value={form.email} onChange={(value) => updateField("email", value)} autoComplete="off" required />
             <ProfileField label="บทบาท" value={form.role} onChange={(value) => updateField("role", value)} autoComplete="off" />
-            <ProfileField label="เบอร์โทร" value={form.phone} onChange={(value) => updateField("phone", value)} autoComplete="off" maxLength={10} inputMode="numeric" />
+            <ProfileField label="เบอร์โทรศัพท์" value={form.phone} onChange={(value) => updateField("phone", value)} autoComplete="off" maxLength={10} inputMode="numeric" />
 
             <h3>บัญชีผู้ใช้</h3>
             <ProfileField label="ชื่อผู้ใช้" value={form.username} onChange={(value) => updateField("username", value)} autoComplete="off" required />
@@ -341,111 +379,4 @@ export default function ProfileClient({ user }: { user: User | null }) {
       />
     </main>
   );
-}
-
-function Avatar({ initials, image, large = false }: { initials: string; image?: string; large?: boolean }) {
-  return (
-    <div className={large ? "avatar avatar-large" : "avatar"}>
-      {image ? <img src={image} alt="" /> : <span>{initials || "U"}</span>}
-    </div>
-  );
-}
-
-function ProfileField({
-  label,
-  value,
-  onChange,
-  autoComplete,
-  inputMode,
-  maxLength,
-  required = false,
-  disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  autoComplete?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-  maxLength?: number;
-  required?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="profile-field">
-      <span>{label}{required && <b className="required-mark">*</b>}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        maxLength={maxLength}
-        disabled={disabled}
-      />
-    </label>
-  );
-}
-
-function PasswordField({
-  label,
-  value,
-  visible,
-  onChange,
-  onToggle,
-  placeholder,
-  autoComplete,
-}: {
-  label: string;
-  value: string;
-  visible: boolean;
-  onChange: (value: string) => void;
-  onToggle: () => void;
-  placeholder: string;
-  autoComplete?: string;
-}) {
-  return (
-    <label className="profile-field">
-      <span>{label}</span>
-      <div className="password-field">
-        <LockIcon />
-        <input
-          type={visible ? "text" : "password"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-        />
-        <button type="button" onClick={onToggle} aria-label={visible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}>
-          {visible ? <EyeIcon /> : <EyeOffIcon />}
-        </button>
-      </div>
-    </label>
-  );
-}
-
-function UserIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="8" r="4" /></svg>;
-}
-
-function LockIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>;
-}
-
-function GearIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 .6V20a2 2 0 0 1-4 0v-.08a1.8 1.8 0 0 0-1-.6 1.8 1.8 0 0 0-1.98.36l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-.6-1H4a2 2 0 0 1 0-4h.08a1.8 1.8 0 0 0 .6-1 1.8 1.8 0 0 0-.36-1.98l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1-.6V4a2 2 0 0 1 4 0v.08a1.8 1.8 0 0 0 1 .6 1.8 1.8 0 0 0 1.98-.36l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.8 1.8 0 0 0 19.4 9c.22.33.42.66.6 1H20a2 2 0 0 1 0 4h-.08c-.18.34-.38.68-.52 1Z" /></svg>;
-}
-
-function LogoutIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M21 3v18" /></svg>;
-}
-
-function PencilIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4" /><path d="M4 20l4.5-1 10-10a2.8 2.8 0 0 0-4-4l-10 10L4 20Z" /></svg>;
-}
-
-function EyeIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>;
-}
-
-function EyeOffIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 2 20 20" /><path d="M6.7 6.7C3.8 8.4 2 12 2 12s3.5 6 10 6c1.6 0 3-.3 4.2-.8" /><path d="M10.7 5.1C11.1 5 11.5 5 12 5c6.5 0 10 7 10 7a13.4 13.4 0 0 1-3 3.7" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>;
 }

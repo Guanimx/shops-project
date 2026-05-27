@@ -1,21 +1,63 @@
 export default function Loading() {
+  const fields = Array.from({ length: 7 }, (_, index) => index);
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "24px" }}>
-      <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
-        <div className="skeleton" style={{ width: "180px", height: "28px", marginBottom: "40px" }} />
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "24px", overflow: "hidden", marginBottom: "24px" }}>
-          <div className="skeleton" style={{ height: "120px", borderRadius: 0 }} />
-          <div style={{ padding: "32px" }}>
-            <div className="skeleton" style={{ width: "96px", height: "96px", borderRadius: "50%", marginTop: "-80px", marginBottom: "20px" }} />
-            <div className="skeleton" style={{ width: "240px", height: "28px", marginBottom: "12px" }} />
-            <div className="skeleton" style={{ width: "160px", height: "18px" }} />
+    <main className="profile-page profile-page-full">
+      <section className="profile-shell profile-shell-full">
+        <aside className="sidebar">
+          <div className="side-header">
+            <div className="profile-loading-logo skeleton" />
           </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <div className="skeleton" style={{ height: "180px" }} />
-          <div className="skeleton" style={{ height: "180px" }} />
-        </div>
-      </div>
-    </div>
+
+          <nav className="side-nav" aria-label="Profile navigation loading">
+            <div className="profile-loading-side-link skeleton" />
+            <div className="profile-loading-side-link skeleton" />
+          </nav>
+
+          <div className="side-account">
+            <div className="avatar skeleton" />
+            <div className="profile-loading-side-name skeleton" />
+          </div>
+
+          <div className="profile-loading-logout skeleton" />
+        </aside>
+
+        <section className="profile-content pt-5">
+          <div className="mobile-sidebar-toggle profile-loading-menu">
+            <div className="profile-loading-menu-icon skeleton" />
+            <div className="profile-loading-menu-text skeleton" />
+          </div>
+
+          <header className="profile-hero">
+            <div className="avatar avatar-large skeleton" />
+            <div className="profile-loading-title skeleton" />
+            <div className="profile-loading-role skeleton" />
+          </header>
+
+          <div className="profile-form profile-form-full">
+            <div className="profile-loading-heading skeleton" />
+            {fields.slice(0, 4).map((field) => (
+              <div className="profile-loading-field" key={field}>
+                <div className="profile-loading-label skeleton" />
+                <div className="profile-loading-input skeleton" />
+              </div>
+            ))}
+
+            <div className="profile-loading-subheading skeleton" />
+            {fields.slice(4).map((field) => (
+              <div className="profile-loading-field" key={field}>
+                <div className="profile-loading-label skeleton" />
+                <div className="profile-loading-input skeleton" />
+              </div>
+            ))}
+
+            <div className="form-actions">
+              <div className="profile-loading-action skeleton" />
+              <div className="profile-loading-action skeleton" />
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
   );
 }

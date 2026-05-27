@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 function clearAuthCookies(response: NextResponse) {
   response.cookies.set("auth_token", "", {
@@ -17,8 +17,9 @@ function clearAuthCookies(response: NextResponse) {
   });
 }
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   const response = NextResponse.json({ success: true, message: "Logged out" });
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
   clearAuthCookies(response);
   return response;
 }

@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+
+const INVALID_LOGIN_MESSAGE = "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,22 +15,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setUsername("emilys");
-    setPassword("emilyspass");
-  }, []);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
     if (!username.trim()) {
-      setError("อีเมลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+      setError(INVALID_LOGIN_MESSAGE);
       return;
     }
 
     if (!password.trim()) {
-      setError("อีเมลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+      setError(INVALID_LOGIN_MESSAGE);
       return;
     }
 
@@ -40,7 +39,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "อีเมลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        setError(data.message || INVALID_LOGIN_MESSAGE);
       } else {
         router.push("/profile");
       }
@@ -53,7 +52,6 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-      <div className="screen-label">Login{error ? "/fail" : ""}</div>
       <section className="auth-shell" aria-label="Login">
         <aside className="auth-brand">
           <div className="brand-copy">
@@ -62,7 +60,7 @@ export default function LoginPage() {
             <p>สัมผัสความสดใหม่ของสินค้าออร์แกนิก ส่งตรงถึงหน้าบ้านคุณ</p>
           </div>
 
-          <img className="basket-image" src="/vegetable-basket.png" alt="ตะกร้าผักสด" />
+          <Image className="basket-image" src="/vegetable-basket.png" alt="ตะกร้าผักสด" width={430} height={260} priority />
 
           <div className="brand-footer">
             <div className="avatar-stack" aria-hidden="true">
@@ -91,7 +89,7 @@ export default function LoginPage() {
             <label>
               <span>ชื่อผู้ใช้</span>
               <div className="field-wrap">
-                <UserIcon />
+                <UserRound aria-hidden="true" />
                 <input
                   type="text"
                   value={username}
@@ -100,7 +98,7 @@ export default function LoginPage() {
                     setError("");
                   }}
                   placeholder="กรุณากรอกชื่อผู้ใช้"
-                  autoComplete="username"
+                  autoComplete="off"
                 />
               </div>
             </label>
@@ -108,7 +106,7 @@ export default function LoginPage() {
             <label>
               <span>รหัสผ่าน</span>
               <div className="field-wrap">
-                <LockIcon />
+                <LockKeyhole aria-hidden="true" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -117,10 +115,10 @@ export default function LoginPage() {
                     setError("");
                   }}
                   placeholder="กรุณากรอกรหัสผ่าน"
-                  autoComplete="current-password"
+                  autoComplete="off"
                 />
                 <button type="button" className="field-icon-button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}>
-                  {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  {showPassword ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
                 </button>
               </div>
             </label>
@@ -132,43 +130,5 @@ export default function LoginPage() {
         </section>
       </section>
     </main>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M20 21a8 8 0 0 0-16 0" />
-      <circle cx="12" cy="8" r="4" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="5" y="10" width="14" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m2 2 20 20" />
-      <path d="M6.7 6.7C3.8 8.4 2 12 2 12s3.5 6 10 6c1.6 0 3-.3 4.2-.8" />
-      <path d="M10.7 5.1C11.1 5 11.5 5 12 5c6.5 0 10 7 10 7a13.4 13.4 0 0 1-3 3.7" />
-      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-    </svg>
   );
 }

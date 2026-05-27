@@ -6,7 +6,9 @@ export async function GET(req: NextRequest) {
     const token = req.cookies.get("auth_token")?.value;
 
     if (!token) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      const response = NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      return response;
     }
 
     const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
@@ -20,14 +22,29 @@ export async function GET(req: NextRequest) {
     const data = text ? JSON.parse(text) : {};
 
     if (!res.ok) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { message: data.message || "Failed to fetch profile" },
         { status: res.status }
       );
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      return response;
     }
 
-    return NextResponse.json(data);
+    const response = NextResponse.json({
+      id: data.id,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      username: data.username,
+      email: data.email,
+      phone: data.phone,
+      image: data.image,
+      role: data.role,
+    });
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return response;
   } catch {
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    const response = NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return response;
   }
 }

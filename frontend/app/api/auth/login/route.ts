@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
     if (!login || !password) {
       return NextResponse.json(
-        { message: "Username or email and password are required" },
+        { message: "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง" },
         { status: 400 }
       );
     }
@@ -25,14 +25,25 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       return NextResponse.json(
-        { message: data.message || "Invalid credentials" },
+        { message: "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง" },
         { status: res.status }
       );
     }
 
-    const response = NextResponse.json(data);
     const accessToken = data.accessToken || data.token;
     const refreshToken = data.refreshToken;
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        image: data.image,
+        role: data.role,
+      },
+    });
 
     if (accessToken) {
       response.cookies.set("auth_token", accessToken, {

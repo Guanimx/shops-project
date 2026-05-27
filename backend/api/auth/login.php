@@ -14,13 +14,13 @@ $password = trim($body['password'] ?? '');
 
 // Validation
 if (empty($login)) {
-    jsonResponse(['message' => 'Username or email is required'], 400);
+    jsonResponse(['message' => 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'], 400);
 }
 if (empty($password)) {
-    jsonResponse(['message' => 'Password is required'], 400);
+    jsonResponse(['message' => 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'], 400);
 }
 if (strlen($password) < 4) {
-    jsonResponse(['message' => 'Password must be at least 4 characters'], 400);
+    jsonResponse(['message' => 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'], 400);
 }
 
 try {
@@ -35,7 +35,7 @@ try {
 }
 
 if (!$user || empty($user['password']) || !password_verify($password, $user['password'])) {
-    jsonResponse(['message' => 'Invalid credentials'], 401);
+    jsonResponse(['message' => 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'], 401);
 }
 
 $token = createAuthToken($user);

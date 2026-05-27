@@ -3,6 +3,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import ProfileClient from "./ProfileClient";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ProfilePage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token");
